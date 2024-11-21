@@ -130,7 +130,7 @@ def inflow():
                 id_pr = int(get_or_create_id("pr", "name_pr", str(row["Производитель"])))
                 #print('id_pr',id_pr, str(row["Производитель"]))
                 id_tech = int(get_or_create_id("tech", "name_tech", str(row["Технологический процесс"])))
-                #print('id_tech',id_tech, str(row["Технологический процесс"]))
+                #print('id_tech', id_tech, str(row["Технологический процесс"]))
                 id_lot = int(get_or_create_id("lot", "name_lot", str(row['Партия (Lot ID)'])))
                 #print('id_lot',id_lot, str(row['Партия (Lot ID)']))
                 id_wafer = int(get_or_create_id("wafer", "name_wafer", str(row['Пластина (Wafer)'])))
@@ -151,7 +151,6 @@ def inflow():
                 #print('id_stor',id_stor, str(row['Место хранения']))
                 id_cells = int(get_or_create_id("cells", "name_cells", str(row["Ячейка хранения"])))
                 #print('id_cells',id_cells, str(row["Ячейка хранения"]))
-                #row['Приход GelPack, шт.'] = row['Приход GelPack, шт.'].where(row['Приход GelPack, шт.'].isnull(), 1).fillna(0).astype(int)
                 data_to_insert.append((
                     id_start, id_tech,  id_chip, id_lot, id_wafer, id_quad, id_in_lot,
                     row['Дата прихода'], row['Приход Wafer, шт.'], row['Примечание'], id_pack, id_cells, id_n_chip,

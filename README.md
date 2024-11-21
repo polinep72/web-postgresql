@@ -43,7 +43,7 @@
    ```bash
    pip install -r requirements.txt
 
-4. **Настроить базу данных**:   
+4. **Настроить базу данных**: 
    Создайте базу данных PostgreSQL.
    Обновите файл .env с учетными данными для базы данных:
    `DATABASE_URL=postgresql://username:password@localhost:5432/dbname`
@@ -100,6 +100,6 @@ crystal-warehouse/
 
    Разработчик: Полин Евгений Павлович, telegram: @PolinEP, e-mail: polin-ep@yandex.ru
 
-## Планы на будущее
+## Планы
    Реализация HTTPS для безопасной передачи данных.
    Интеграция с внешними платформами для повышения удобства.
