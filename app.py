@@ -114,6 +114,8 @@ def inflow():
             return jsonify({"error": "Файл не выбран"}), 400
 
         try:
+            # Имя загружаемого файла
+            file_name = file.filename
             # Загрузка данных из Excel
             df = pd.read_excel(file, header=0)
             #print(df.info())
@@ -177,6 +179,13 @@ def inflow():
                     execute_values(cur, insert_query, data_to_insert)
                 conn.commit()
                 conn.close()
+            # Логирование
+            log_user_action(
+                user_id=session.get('user_id'),  # ID пользователя из сессии
+                action_type='Загрузка файла: Приход',
+                file_name=file_name,
+                target_table='invoice'  # Название таблицы
+            )
 
             return jsonify({"success": True, "message": "Данные успешно загружены в БД"}), 200
         except Exception as e:
@@ -192,11 +201,11 @@ def outflow():
             return jsonify({"error": "Файл не выбран"}), 400
 
         try:
+            # Имя загружаемого файла
+            file_name = file.filename
             # Загрузка данных из Excel
             data = pd.read_excel(file, header=0)
-            print(data)
             data['Расход Wafer, шт.'] = data['Расход Wafer, шт.'].fillna(0).astype(int)
-            print(data['Расход Wafer, шт.'] )
             data['Расход GelPack, шт.'] = data['Расход GelPack, шт.'].fillna(0).astype(int)
             data['Место хранения'] = data['Место хранения'].fillna('-')
             data['Ячейка хранения'] = data['Ячейка хранения'].fillna('-')
@@ -236,7 +245,13 @@ def outflow():
                     execute_values(cur, query, data_to_insert)
                 conn.commit()
                 conn.close()
-
+            # Логирование
+            log_user_action(
+                user_id=session.get('user_id'),  # ID пользователя из сессии
+                action_type='Загрузка файла: Расход',
+                file_name=file_name,
+                target_table='consumption'  # Название таблицы
+            )
             return jsonify({"success": True, "message": "Данные успешно загружены в БД"}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -251,6 +266,8 @@ def refund():
             return jsonify({"error": "Файл не выбран"}), 400
 
         try:
+            # Имя загружаемого файла
+            file_name = file.filename
             # Загрузка данных из Excel
             data = pd.read_excel(file, header=0)
             data['Возврат Wafer, шт.'] = data['Возврат Wafer, шт.'].fillna(0).astype(int)
@@ -299,9 +316,16 @@ def refund():
                 except Exception as e:
                     conn.rollback()  # Откат транзакции при ошибке
                     print("Ошибка при вставке данных:", e)
+                    return jsonify({"error": str(e)}), 500
                 finally:
                     conn.close()
-
+                # Логирование
+                log_user_action(
+                    user_id=session.get('user_id'),  # ID пользователя из сессии
+                    action_type='Загрузка файла: Возврат',
+                    file_name=file_name,
+                    target_table='invoice'  # Название таблицы
+                )
             return jsonify({"success": True, "message": "Данные успешно загружены в БД"}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -635,6 +659,24 @@ def clear_cart():
     except Exception as e:
         app.logger.error(f"Ошибка очистки корзины: {e}")
         return {"success": False, "message": "Ошибка при очистке корзины."}, 500
+
+def log_user_action(user_id, action_type, file_name, target_table):
+    query = """
+        INSERT INTO user_logs (user_id, action_type, file_name, target_table)
+        VALUES (%s, %s, %s, %s)
+    """
+    params = (user_id, action_type, file_name, target_table)
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+        conn.commit()
+    except Exception as e:
+        print(f"Ошибка логирования: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
 
 if __name__ == '__main__':
     serve(app, host="127.0.0.1", port=5000)
