@@ -333,15 +333,27 @@ def refund():
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     user_id = session.get('user_id')
+    # Если только загрузка страницы
+    if request.method == 'GET' and not request.args.get('chip_name'):
+        # Получить список всех производителей для фильтра
+        manufacturers_query = "SELECT DISTINCT name_pr FROM pr ORDER BY name_pr"
+        manufacturers_raw = execute_query(manufacturers_query)
+        # Преобразуем кортежи в список строк
+        manufacturers = [row[0] for row in manufacturers_raw]
+        return render_template('search.html', manufacturers=manufacturers)
+
     if request.method == 'POST':
         if 'user_id' not in session:
             return redirect(url_for('login'))
+        manufacturers_query = "SELECT DISTINCT name_pr FROM pr ORDER BY name_pr"
+        manufacturers_raw = execute_query(manufacturers_query)
+        # Преобразуем кортежи в список строк
+        manufacturers = [row[0] for row in manufacturers_raw]
+        chip_name = request.form.get('chip_name', '').strip()
+        manufacturer_filter = request.form.get('manufacturer', '')
 
-
-        chip_name = request.form['chip_name']
         conn = get_db_connection()
         cur = conn.cursor()
-
         query = """
                 WITH consumption_aggregated AS (SELECT id_n_chip,id_quad, item_id, SUM(cons_w) AS total_cons_w, SUM(cons_gp) AS total_cons_gp
                     FROM consumption
@@ -373,11 +385,25 @@ def search():
                 LEFT JOIN wafer w ON w.id = i.id_wafer 
                 LEFT JOIN lot l ON l.id = i.id_lot
                 LEFT JOIN in_lot il ON il.id = i.id_in_lot
-                WHERE nc.n_chip ILIKE %s;
+                WHERE 1=1
         """
+        # Добавить фильтр по производителю, если выбран
+        params = []
+        if chip_name:
+            query += " AND nc.n_chip ILIKE %s"
+            params.append(f"%{chip_name}%")
+
+        if manufacturer_filter:
+            query += " AND p.name_pr = %s"
+            params.append(manufacturer_filter)
+            # Добавить поиск по запросу, если задан
+
+        # if query_f:
+        #     query += " AND (start_p.name_start ILIKE %s OR lot.name_lot ILIKE %s)"
+        #     params.extend([f"%{query}%", f"%{query}%"])
 
         try:
-            cur.execute(query, ('%' + chip_name + '%',))
+            cur.execute(query, params)
             results = cur.fetchall()
             #print(f"Query results: {results}")
         except Exception as e:
@@ -386,29 +412,33 @@ def search():
             cur.close()
             conn.close()
 
-            # Генерируем HTML-таблицу для отображения результатов
-            output = '<table border="1">'
-            output += '<tr><th>item_id</th><th>Запуск</th><th>Производитель</th><th>Технология</th><th>Пластина</th><th>Квадрант</th><th>Партия</th><th>Внутренняя партия</th><th>Шифр кристалла</th><th>Количество на пластине</th><th>Количество в GelPack</th><th>Взять на пластине</th><th>Взять в GelPack</th><th>Действия</th></tr>'
-            for row in results:
-                output += '<tr>'
-                output += f'<td>{row[1]}</td>'
-                output += f'<td>{row[2]}</td>'
-                output += f'<td>{row[3]}</td>'
-                output += f'<td>{row[4]}</td>'
-                output += f'<td>{row[5]}</td>'
-                output += f'<td>{row[6]}</td>'
-                output += f'<td>{row[7]}</td>'
-                output += f'<td>{row[8]}</td>'
-                output += f'<td>{row[9]}</td>'
-                output += f'<td>{row[10]}</td>'
-                output += f'<td>{row[11]}</td>'
-                output += f'<td><input type="number" class="quantity-input-w" data-id="{row[0]}" max="{row[10]}" placeholder="Макс: {row[10]}"></td>'
-                output += f'<td><input type="number" class="quantity-input-gp" data-id="{row[0]}" max="{row[11]}" placeholder="Макс: {row[11]}"></td>'
-                output += f'<td><button class="add-to-cart" data-id="{row[0]}">Добавить в корзину</button></td>'
-                output += '</tr>'
-            output += '</table>'
+            # # Генерируем HTML-таблицу для отображения результатов
+            # output = '<table border="1">'
+            # output += '<tr><th>item_id</th><th>Запуск</th><th>Производитель</th><th>Технология</th><th>Пластина</th><th>Квадрант</th><th>Партия</th><th>Внутренняя партия</th><th>Шифр кристалла</th><th>Количество на пластине</th><th>Количество в GelPack</th><th>Взять на пластине</th><th>Взять в GelPack</th><th>Действия</th></tr>'
+            # for row in results:
+            #     output += '<tr>'
+            #     output += f'<td>{row[1]}</td>'
+            #     output += f'<td>{row[2]}</td>'
+            #     output += f'<td>{row[3]}</td>'
+            #     output += f'<td>{row[4]}</td>'
+            #     output += f'<td>{row[5]}</td>'
+            #     output += f'<td>{row[6]}</td>'
+            #     output += f'<td>{row[7]}</td>'
+            #     output += f'<td>{row[8]}</td>'
+            #     output += f'<td>{row[9]}</td>'
+            #     output += f'<td>{row[10]}</td>'
+            #     output += f'<td>{row[11]}</td>'
+            #     output += f'<td><input type="number" class="quantity-input-w" data-id="{row[0]}" max="{row[10]}" placeholder="Макс: {row[10]}"></td>'
+            #     output += f'<td><input type="number" class="quantity-input-gp" data-id="{row[0]}" max="{row[11]}" placeholder="Макс: {row[11]}"></td>'
+            #     output += f'<td><button class="add-to-cart" data-id="{row[0]}">Добавить в корзину</button></td>'
+            #     output += '</tr>'
+            # output += '</table>'
 
-            return render_template('search.html', results=results)
+            return render_template('search.html', results=results,
+        manufacturers=manufacturers,  # Передать список производителей
+        query=chip_name,
+        manufacturer_filter=manufacturer_filter
+    )
     else:
         return render_template('search.html')  # Выводим страницу поиска для GET-запроса
 

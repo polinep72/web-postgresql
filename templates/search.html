@@ -138,10 +138,33 @@
     <div class="container">
         <h1 style="font-size: 20px;">Поиск кристаллов</h1>
         <form method="POST" action="/search">
-            <label for="chip_name">Введите шифр кристалла:</label>
-            <input type="text" id="chip_name" name="chip_name" required>
-            <button type="submit">Найти</button>
-        </form>
+			<div style="margin-bottom: 20px;">
+				<label for="manufacturer" style="margin-right: 10px;">Выберите производителя:</label>
+				<select id="manufacturer" name="manufacturer" style="width: 300px; padding: 10px; font-size: 16px;">
+					<option value="all">Все производители</option>
+					{% for manufacturer in manufacturers %}
+						<option value="{{ manufacturer }}" 
+							{% if request.form.get('manufacturer') == manufacturer %} selected {% endif %}>
+							{{ manufacturer }}
+						</option>
+					{% endfor %}
+				</select>
+			</div>
+
+			<div style="margin-bottom: 20px;">
+				<label for="chip_name" style="margin-left: 20px; margin-right: 1px;">Введите шифр кристалла:</label>
+				<input 
+					type="text" 
+					id="chip_name" 
+					name="chip_name" 
+					value="{{ request.form.get('chip_name', '') }}" 
+					required 
+					style="width: 300px; padding: 10px; font-size: 16px;"
+				>
+			</div>
+
+			<button type="submit" style="margin-bottom: 20px; padding: 10px 20px; font-size: 16px;">Найти</button>
+		</form>
 		
         {% if results %}
 		<h2 style="font-size: 20px;">Результаты поиска</h2>
