@@ -82,7 +82,7 @@
         form input, form button {
             margin: 0 10px; /* Минимальные отступы между элементами */
             padding: 10px;
-            font-size: 16px;
+            font-size: 10px;
         }
 
         table {
@@ -119,6 +119,21 @@
         .cart-button:hover {
             background-color: #45a049;
         }
+		/* Уменьшение ширины столбцов */
+        .limited-width-column {
+            width: 90px; /* Ограничение ширины */
+            word-wrap: break-word; /* Перенос текста */
+            text-align: center;
+        }
+		.quantity-column {
+        width: 60px; /* Уменьшенная ширина столбцов */
+		}
+
+		.quantity-input-w,
+		.quantity-input-gp {
+			width: 60px; /* Уменьшенная ширина полей ввода */
+		}
+		
     </style>
 </head>
 <body>
@@ -180,8 +195,11 @@
 			<th>Партия</th>
             <th>Внутренняя партия</th>
             <th>Шифр кристалла</th>
-            <th>Количество на пластине</th>
-            <th>Количество в GelPack</th>
+            <th class="limited-width-column">Количество на пластине</th>
+            <th class="limited-width-column">Количество в GelPack</th>
+			<th>Примечание</th>
+			<th>Место хранения</th>
+			<th>Ячейка хранения</th>
             <th>Взять на пластине</th>
             <th>Взять в GelPack</th>
             <th>Действия</th>
@@ -197,7 +215,10 @@
 			data-wafer="{{ row[5] }}" 
 			data-quadrant="{{ row[6] }}" 
 			data-internal-lot="{{ row[8] }}" 
-			data-chip-code="{{ row[9] }}">
+			data-chip-code="{{ row[9] }}"
+			data-note="{{ row[12] }}"
+			data-stor="{{ row[13] }}"
+			data-cells="{{ row[14] }}">
 			<td>{{ row[0] }}</td>
 			<td>{{ row[2] }}</td>
 			<td>{{ row[3] }}</td>
@@ -207,16 +228,19 @@
 			<td>{{ row[7] }}</td>
 			<td>{{ row[8] }}</td>
 			<td>{{ row[9] }}</td>
-			<td>{{ row[10] }}</td>
-			<td>{{ row[11] }}</td>
-			<td>
-				<input type="number" class="quantity-input-w" data-id="{{ row[0] }}" 
-					   max="{{ row[10] }}" placeholder="Макс: {{ row[10] }}">
-			</td>
-			<td>
-				<input type="number" class="quantity-input-gp" data-id="{{ row[0] }}" 
-					   max="{{ row[11] }}" placeholder="Макс: {{ row[11] }}">
-			</td>
+			<td class="limited-width-column">{{ row[10] }}</td>
+			<td class="limited-width-column">{{ row[11] }}</td>
+			<td>{{ row[12] }}</td>
+			<td>{{ row[13] }}</td>
+			<td>{{ row[14] }}</td>
+			<td class="quantity-column">
+                <input type="number" class="quantity-input-w" data-id="{{ row[0] }}" 
+                       max="{{ row[10] }}" placeholder="Макс: {{ row[10] }}">
+            </td>
+            <td class="quantity-column">
+                <input type="number" class="quantity-input-gp" data-id="{{ row[0] }}" 
+                       max="{{ row[11] }}" placeholder="Макс: {{ row[11] }}">
+            </td>
 			<td>
 				<button class="add-to-cart" data-id="{{ row[0] }}">Добавить в корзину</button>
 			</td>
@@ -248,6 +272,9 @@
 				const quadrant = row.dataset.quadrant;
 				const internalLot = row.dataset.internalLot;
 				const chipCode = row.dataset.chipCode;
+				const note = row.dataset.note;
+				const stor = row.dataset.stor;
+				const cells = row.dataset.cells;
 
 				// Проверка на наличие введенных данных
 				if (!quantityW && !quantityGP) {
@@ -266,6 +293,9 @@
 					quadrant: quadrant,
 					internal_lot: internalLot,
 					chip_code: chipCode,
+					note: note,
+					stor: stor,
+					cells: cells,					
 					quantity_w: quantityW || 0,
 					quantity_gp: quantityGP || 0
 				};

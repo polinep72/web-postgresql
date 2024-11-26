@@ -84,7 +84,7 @@
             color: white;
         }
 
-        .cart-button {
+        .button {
             display: inline-block;
             margin-top: 20px;
             padding: 10px 20px;
@@ -97,9 +97,23 @@
             border-radius: 5px;
         }
 
-        .cart-button:hover {
+        .button:hover {
             background-color: #45a049;
         }
+		/* Уменьшение ширины столбцов */
+        .limited-width-column {
+            width: 90px; /* Ограничение ширины */
+            word-wrap: break-word; /* Перенос текста */
+            text-align: center;
+        }
+		.quantity-column {
+        width: 60px; /* Уменьшенная ширина столбцов */
+		}
+
+		.quantity-input-w,
+		.quantity-input-gp {
+			width: 60px; /* Уменьшенная ширина полей ввода */
+		}
     </style>
 </head>
 <body>
@@ -130,7 +144,10 @@
                     <th>Партия</th>
 					<th>Внутренняя партия</th>
                     <th>Шифр кристалла</th>
-                    <th>Дата добавления</th>
+                    <th>Примечание</th>
+					<th>Место хранения</th>
+					<th>Ячейка хранения</th>
+					<th>Дата добавления</th> 
                     <th>Взять на пластине</th>
                     <th>Взять в GelPack</th>
                     <th>Действия</th>
@@ -149,11 +166,14 @@
 					<td>{{ row[8] }}</td>
 					<td>{{ row[9] }}</td>
 					<td>{{ row[10] }}</td>
+					<td>{{ row[11] }}</td>
+					<td>{{ row[12] }}</td>
+					<td>{{ row[13] }}</td>
 					<td>
-						<input type="number" class="quantity-input-w" value="{{ row[11] }}" min="0">
+						<input type="number" class="quantity-input-w" value="{{ row[14] }}" min="0">
 					</td>
 					<td>
-						<input type="number" class="quantity-input-gp" value="{{ row[12] }}" min="0">
+						<input type="number" class="quantity-input-gp" value="{{ row[15] }}" min="0">
 					</td>
 					<td>
 						<button class="save-item">Сохранить</button>

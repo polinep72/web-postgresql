@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, request, send_file, jsonify, session, redirect, url_for, make_response
 from psycopg2.extras import execute_values
 from waitress import serve
+from openpyxl import Workbook
+from openpyxl.styles import NamedStyle
 
 # Загружаем переменные окружения
 load_dotenv()
@@ -359,9 +361,9 @@ def search():
                     FROM consumption
                     GROUP BY id_n_chip, id_quad, item_id
                 ),
-                invoice_aggregated AS (SELECT id_start, id_pr, id_tech, id_wafer, id_lot, id_in_lot, id_n_chip, id_quad, item_id, SUM(quan_w) AS total_quan_w, SUM(quan_gp) AS total_quan_gp
+                invoice_aggregated AS (SELECT id_start, id_pr, id_tech, id_wafer, id_lot, id_in_lot, id_n_chip, id_quad, item_id, SUM(quan_w) AS total_quan_w, SUM(quan_gp) AS total_quan_gp, invoice.note, invoice.id_cells, invoice.id_stor
                     FROM invoice
-                    GROUP BY id_start, id_pr, id_tech, id_wafer, id_quad, id_lot, id_in_lot, id_n_chip, item_id
+                    GROUP BY id_start, id_pr, id_tech, id_wafer, id_quad, id_lot, id_in_lot, id_n_chip, item_id, invoice.note, invoice.id_cells, invoice.id_stor
                 )
                 SELECT i.item_id, 
                     i.id_start,
@@ -374,7 +376,10 @@ def search():
                     il.in_lot,
                     nc.n_chip, 
                     (i.total_quan_w - COALESCE(cons.total_cons_w, 0)) AS ostatok_w, 
-                    (i.total_quan_gp - COALESCE(cons.total_cons_gp, 0)) AS ostatok_gp
+                    (i.total_quan_gp - COALESCE(cons.total_cons_gp, 0)) AS ostatok_gp,
+                    i.note,
+                    st.name_stor,
+                    c.name_cells
                     FROM invoice_aggregated i
                 LEFT JOIN consumption_aggregated cons ON cons.item_id = i.item_id
                 LEFT JOIN n_chip nc ON nc.id = i.id_n_chip  
@@ -385,6 +390,8 @@ def search():
                 LEFT JOIN wafer w ON w.id = i.id_wafer 
                 LEFT JOIN lot l ON l.id = i.id_lot
                 LEFT JOIN in_lot il ON il.id = i.id_in_lot
+                LEFT JOIN stor st ON st.id = i.id_stor
+                LEFT JOIN cells c ON c.id = i.id_cells
                 WHERE 1=1
         """
         # Добавить фильтр по производителю, если выбран
@@ -393,11 +400,12 @@ def search():
             query += " AND nc.n_chip ILIKE %s"
             params.append(f"%{chip_name}%")
 
-        if manufacturer_filter:
+        if manufacturer_filter and manufacturer_filter != "all":
             query += " AND p.name_pr = %s"
             params.append(manufacturer_filter)
-            # Добавить поиск по запросу, если задан
 
+        #print(query, manufacturer_filter)
+        # Добавить поиск по запросу, если задан
         # if query_f:
         #     query += " AND (start_p.name_start ILIKE %s OR lot.name_lot ILIKE %s)"
         #     params.extend([f"%{query}%", f"%{query}%"])
@@ -461,6 +469,9 @@ def add_to_cart():
     quadrant = data.get('quadrant')
     internal_lot = data.get('internal_lot')
     chip_code = data.get('chip_code')
+    note=data.get('note')
+    stor=data.get('stor')
+    cells=data.get('cells')
     cons_w = data.get('quantity_w', 0)
     cons_gp = data.get('quantity_gp', 0)
     date_added = datetime.now().strftime('%Y-%m-%d')  # Текущая дата
@@ -473,14 +484,14 @@ def add_to_cart():
         cur = conn.cursor()
 
         query = """
-            INSERT INTO cart (user_id, item_id, cons_w, cons_gp, manufacturer, technology, lot, wafer, quadrant, internal_lot, chip_code, date_added, start)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO cart (user_id, item_id, cons_w, cons_gp, manufacturer, technology, lot, wafer, quadrant, internal_lot, chip_code, date_added, start, note, stor, cells)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (user_id, item_id) 
             DO UPDATE SET 
                 cons_w = cart.cons_w + EXCLUDED.cons_w,
                 cons_gp = cart.cons_gp + EXCLUDED.cons_gp;
         """
-        cur.execute(query, (user_id, item_id, cons_w, cons_gp, manufacturer, technology, lot, wafer, quadrant, internal_lot, chip_code, date_added, start))
+        cur.execute(query, (user_id, item_id, cons_w, cons_gp, manufacturer, technology, lot, wafer, quadrant, internal_lot, chip_code, date_added, start, note, stor, cells))
         conn.commit()
 
         cur.close()
@@ -507,6 +518,9 @@ def cart():
         lot,
         internal_lot,
         chip_code,
+        note,
+        stor,
+        cells,
         date_added,
         cons_w,
         cons_gp
@@ -573,6 +587,9 @@ def export_cart():
         quadrant AS "Quadrant",
         internal_lot AS "Внутренняя партия",
         chip_code AS "Шифр кристалла",
+        note AS "Примечание",
+        stor AS "Место хранения",
+        cells AS "Ячейка хранения",
         date_added AS "Дата расхода",
         cons_w AS "Расход Wafer, шт.",
         cons_gp AS "Расход GelPack, шт."
@@ -594,7 +611,7 @@ def export_cart():
     # Столбцы, которые заполняются из SQL-запроса
     filled_columns = [
         "Номер запуска", "Производитель", "Технологический процесс", "Партия (Lot ID)", "Пластина (Wafer)",
-        "Quadrant", "Внутренняя партия", "Шифр кристалла", "Дата расхода",
+        "Quadrant", "Внутренняя партия", "Шифр кристалла", "Примечание", "Место хранения", "Ячейка хранения", "Дата расхода",
         "Расход Wafer, шт.", "Расход GelPack, шт."
     ]
     # Проверка на наличие данных
@@ -609,12 +626,32 @@ def export_cart():
         # Создаем пустой DataFrame с 21 столбцом
         df = pd.DataFrame(columns=columns)
 
+    # Убедитесь, что столбец "Дата" существует и преобразуйте его в формат даты
+    if "Дата" in df.columns:
+        df["Дата"] = pd.to_datetime(df["Дата"], errors="coerce")  # Преобразование в datetime
+
     # Все пустые столбцы автоматически заполнятся NaN (неявно)
     df = df.infer_objects(copy=False)
 
     # Создаем временный файл в памяти
     output = BytesIO()
-    df.to_excel(output, index=False, engine='openpyxl')
+    # Создаем ExcelWriter и записываем DataFrame в файл
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Sheet1")
+        workbook = writer.book
+        worksheet = writer.sheets["Sheet1"]
+
+        # Применяем форматирование к столбцу с датами
+        if "Дата" in df.columns:
+            date_style = NamedStyle(name="datetime", number_format="YYYY-MM-DD")
+            workbook.add_named_style(date_style)
+
+            # Найти индекс столбца "Дата"
+            date_col_index = df.columns.get_loc("Дата") + 1  # Учитываем смещение для Excel
+            for row in range(2, len(df) + 2):  # Начинаем с 2, т.к. 1 строка - заголовок
+                cell = worksheet.cell(row=row, column=date_col_index)
+                cell.style = date_style
+
     output.seek(0)
 
     # Отправляем файл клиенту
