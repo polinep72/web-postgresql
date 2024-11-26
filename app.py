@@ -496,7 +496,6 @@ def add_to_cart():
 
         cur.close()
         conn.close()
-
         return jsonify({'success': True, 'message': 'Товар добавлен в корзину'})
     except Exception as e:
         print(f"Ошибка добавления в корзину: {e}")
