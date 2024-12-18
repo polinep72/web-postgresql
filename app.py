@@ -1,3 +1,5 @@
+# написать комментарии к каждому модулю программы
+
 import os
 from datetime import datetime
 from io import BytesIO
@@ -10,10 +12,10 @@ from waitress import serve
 from openpyxl.styles import NamedStyle
 
 # Загружаем переменные окружения
-load_dotenv()
+load_dotenv() # Загрузка переменных окружения из файла .env
 
-app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY')
+app = Flask(__name__) # Создаем экземпляр приложения Flask
+app.secret_key = os.getenv('SECRET_KEY') # Устанавливаем секретный ключ для сессий
 
 @app.context_processor
 def inject_user():
@@ -80,9 +82,9 @@ def get_reference_id(table_name, column_name, value):
 
 def get_or_create_id(table, column, value):
     """Возвращает id из вспомогательной таблицы, добавляя запись, если она отсутствует."""
-    select_query = f"SELECT id FROM {table} WHERE {column} = %s"
+    select_query = f"SELECT id FROM {table} WHERE {column} = %s" # SQL-запрос для поиска записи
 
-    result = execute_query(select_query, (value,))
+    result = execute_query(select_query, (value,)) # Выполняем запрос
 
     if result:
         return result[0][0]
@@ -102,7 +104,7 @@ def get_or_create_id(table, column, value):
 # Стартовая страница
 @app.route('/')
 def home():
-    return render_template('home.html')
+    return render_template('home.html') # Отображаем шаблон home.html
 
 
 
@@ -171,7 +173,6 @@ def inflow():
                         quan_gp = EXCLUDED.quan_gp,
                         note = EXCLUDED.note                    
                 """
-
 
                 # Вставка данных с использованием execute_values для оптимизации
                 conn = get_db_connection()
