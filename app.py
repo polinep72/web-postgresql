@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, request, send_file, jsonify, session, redirect, url_for, make_response
 from psycopg2.extras import execute_values
 from waitress import serve
-from openpyxl import Workbook
 from openpyxl.styles import NamedStyle
 
 # Загружаем переменные окружения
@@ -18,7 +17,7 @@ app.secret_key = os.getenv('SECRET_KEY')
 
 @app.context_processor
 def inject_user():
-    # Передаем логин пользователя в шаблоны, если он залогинен
+    # Передаем логин пользователя в шаблоны, если он вошел в систему
     return {'user_logged_in': 'username' in session, 'username': session.get('username')}
 
 # функция для подключения к БД
@@ -334,7 +333,6 @@ def refund():
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
-    user_id = session.get('user_id')
     # Если только загрузка страницы
     if request.method == 'GET' and not request.args.get('chip_name'):
         # Получить список всех производителей для фильтра
@@ -420,33 +418,11 @@ def search():
             cur.close()
             conn.close()
 
-            # # Генерируем HTML-таблицу для отображения результатов
-            # output = '<table border="1">'
-            # output += '<tr><th>item_id</th><th>Запуск</th><th>Производитель</th><th>Технология</th><th>Пластина</th><th>Квадрант</th><th>Партия</th><th>Внутренняя партия</th><th>Шифр кристалла</th><th>Количество на пластине</th><th>Количество в GelPack</th><th>Взять на пластине</th><th>Взять в GelPack</th><th>Действия</th></tr>'
-            # for row in results:
-            #     output += '<tr>'
-            #     output += f'<td>{row[1]}</td>'
-            #     output += f'<td>{row[2]}</td>'
-            #     output += f'<td>{row[3]}</td>'
-            #     output += f'<td>{row[4]}</td>'
-            #     output += f'<td>{row[5]}</td>'
-            #     output += f'<td>{row[6]}</td>'
-            #     output += f'<td>{row[7]}</td>'
-            #     output += f'<td>{row[8]}</td>'
-            #     output += f'<td>{row[9]}</td>'
-            #     output += f'<td>{row[10]}</td>'
-            #     output += f'<td>{row[11]}</td>'
-            #     output += f'<td><input type="number" class="quantity-input-w" data-id="{row[0]}" max="{row[10]}" placeholder="Макс: {row[10]}"></td>'
-            #     output += f'<td><input type="number" class="quantity-input-gp" data-id="{row[0]}" max="{row[11]}" placeholder="Макс: {row[11]}"></td>'
-            #     output += f'<td><button class="add-to-cart" data-id="{row[0]}">Добавить в корзину</button></td>'
-            #     output += '</tr>'
-            # output += '</table>'
-
             return render_template('search.html', results=results,
-        manufacturers=manufacturers,  # Передать список производителей
-        query=chip_name,
-        manufacturer_filter=manufacturer_filter
-    )
+                manufacturers=manufacturers,
+                query=chip_name,
+                manufacturer_filter=manufacturer_filter
+            )
     else:
         return render_template('search.html')  # Выводим страницу поиска для GET-запроса
 
@@ -526,7 +502,7 @@ def cart():
     FROM cart
     WHERE user_id = %s
     """
-    user_id = session.get('user_id')  # Предполагается, что пользователь залогинен
+    user_id = session.get('user_id')  # Предполагается, что пользователь вошел в систему
     results = execute_query(query, (user_id,))  # Получаем данные из БД для текущего пользователя
 
     # Передаем данные в шаблон
@@ -741,7 +717,6 @@ def log_user_action(user_id, action_type, file_name, target_table):
         conn.rollback()
     finally:
         conn.close()
-
 
 if __name__ == '__main__':
     serve(app, host="127.0.0.1", port=5000)
